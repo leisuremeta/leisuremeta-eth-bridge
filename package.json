@@ -1,0 +1,26 @@
+{
+  "name": "diamond-3",
+  "version": "1.4.0",
+  "description": "This is the default package.json generated for your project",
+  "main": "index.js",
+  "scripts": {
+    "prettier": "prettier --write contracts/**/*.sol",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.2",
+    "@truffle/hdwallet-provider": "^2.1.12",
+    "truffle": "^5.1.44"
+  },
+  "devDependencies": {
+    "@codechecks/client": "^0.1.10",
+    "eth-gas-reporter": "^0.2.17",
+    "prettier": "^2.1.1",
+    "prettier-plugin-solidity": "^1.0.0-alpha.57",
+    "standard": "^14.3.4",
+    "truffle-plugin-verify": "^0.6.3",
+    "typescript": "^4.0.2"
+  }
+}
