@@ -114,13 +114,13 @@ contract('FacetTest', async (accounts) => {
   })
 
   it('should test function call transfer', async () => {
-    await transferFacet.methods.submitTransaction(0, accounts[2], 2000).send({
+    await transferFacet.methods.addTransaction(0, accounts[2], 2000).send({
       from: accounts[1], gas: 1000000
     })
   })
 
   it('should test function call transfer', async () => {
-    await transferFacet.methods.submitTransaction(1, accounts[2], 4000).send({
+    await transferFacet.methods.addTransaction(1, accounts[2], 4000).send({
       from: accounts[1], gas: 1000000
     })
   })
@@ -129,7 +129,7 @@ contract('FacetTest', async (accounts) => {
   })
 
   it('should submit and execute', async () => {
-    await transferFacet.methods.submitTransaction(2, accounts[2], 1000).send({
+    await transferFacet.methods.addTransaction(2, accounts[2], 1000).send({
       from: accounts[1], gas: 1000000
     })
   })
@@ -141,7 +141,7 @@ contract('FacetTest', async (accounts) => {
   })
 
   it('should revert not valid gateway', async () => {
-    const tx = transferFacet.methods.submitTransaction(3, accounts[2], 1000).send({
+    const tx = transferFacet.methods.addTransaction(3, accounts[2], 1000).send({
       from: accounts[3], gas: 100000
     })
     try {

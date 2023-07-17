@@ -10,45 +10,52 @@ contract TransferFacet {
     event ExecuteTransaction(uint txid);
     event RevokeConfirmation(address signer, uint txId);
 
+    /** @dev 유효한 gateway address인지 확인 */
     modifier onlyGateway() {
         LibAppStore.AppStorage storage ls = LibAppStore.appStorage();
         require(ls.gateway == msg.sender, "not valid address");
         _;
     }
 
+    /** @dev 유효한 approver address인지 확인 */
     modifier onlySigner() {
         LibAppStore.AppStorage storage ls = LibAppStore.appStorage();
         require(ls.approver[msg.sender], "not valid address");
         _;
     }
 
+    /** @dev 유효한 트랜잭션인지 확인 
+      * @param _txId 트랜잭션 키
+    */
     modifier txExists(uint _txId) {
         LibAppStore.AppStorage storage ls = LibAppStore.appStorage();
         require(ls.transactions[_txId].amount > 0, "tx is not exist");
         _;
     }
 
-    modifier notConfirmed(uint _txId) {
-        LibAppStore.AppStorage storage ls = LibAppStore.appStorage();
-        require(!ls.isConfirmed[_txId][msg.sender], "tx already confirmed");
-        _;
-    }
-
-    function submitTransaction(
+    /** @dev 입력된 트랜잭션을 저장하고, 조건에 맞으면 실행
+      * @param _txId 트랜잭션 키 
+      * @param _to  trnasfer 트랜잭션을 보낼 address
+      * @param _amount trnasfer 트랜잭션 보낼 값 
+      */
+    function addTransaction(
         uint _txId,
         address _to,
         uint _amount
     ) external onlyGateway {
-        uint cnt = LibAppStore.submitTransaction(_txId, _to, _amount);
+        uint cnt = LibAppStore.addTransaction(_txId, _to, _amount);
         emit SaveTransferRequest(_to, _amount, _txId);
         if(cnt == 0) {
             executeTransaction(_txId);
         }
     }
 
+    /** @dev 트랜잭션을 승인하고, 조건에 맞으면 실행 
+      * @param _txId 트랜잭션 키 
+      */
     function confirmTransaction(
         uint _txId
-    ) external onlySigner txExists(_txId) notConfirmed(_txId) {
+    ) external onlySigner txExists(_txId) {
         LibAppStore.AppStorage storage ls = LibAppStore.appStorage();
         LibAppStore.Transaction storage transaction = ls.transactions[_txId];
         transaction.numConfirmations += 1;
@@ -60,6 +67,9 @@ contract TransferFacet {
         }
     }
 
+    /** @dev 트랜잭션 실행하고 성공하면 트랜잭션을 제거
+      * @param _txId 트랜잭션 키 
+      */
     function executeTransaction(
         uint _txId
     ) internal txExists(_txId) {
