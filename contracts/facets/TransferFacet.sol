@@ -7,7 +7,7 @@ import "../libraries/LibAppStore.sol";
 contract TransferFacet {
     event SaveTransferRequest(address requester, uint amount, uint tidx);
     event ConfirmTransaction(address signer, uint txid);
-    event ExecuteTransaction(uint txid);
+    event ExecuteTransaction(uint txid, string result);
     event RevokeConfirmation(address signer, uint txId);
 
     /** @dev 유효한 gateway address인지 확인 */
@@ -81,6 +81,6 @@ contract TransferFacet {
 
         LibAppStore.removeTransaction(_txId);
 
-        emit ExecuteTransaction(_txId);
+        emit ExecuteTransaction(_txId, string(returnData));
     }
 }
