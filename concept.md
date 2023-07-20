@@ -1,119 +1,165 @@
-# Eth-Gateway CA 개발 개요 
+# LMC-ETH Gateway CA Development Plan
 
-#### 수정내역 
+### What is LMC-ETH Gateway?
 
-- <u>모든 수정 내역은 본문 내에서 밑줄 처리됨</u> 
+- What is LeisureMetaverse?
 
-###### 23/06/23 
+  - LeisureMetaverse is a Web 3.0 enabler to create sustainable social, cultural, and economic community through DAO. There are mainly two services, one is a NFT marketplace called "playNomm", the other is Web 3 creator-fandom community called "NOVA". 
 
-- proxy contract <> 외부 cold wallet의 자산 리밸런싱 기능 추가 
-- LM wallet 프런트엔드의 상태 추적 관련 내용 추가 
-- 가비지 출금 요청 데이터의 삭제 기능 추가 
+- What is LeisureMetaveres Blockchain? 
+
+  - LeisureMetaverse platform is a blockchain-based platform where thousands of users will interact each other while transmitting massive amount of data in the form of multimedia. 
+
+    Although Ethereum is the most widely used blockchain platform and the best value creating platform for NFT, Ethereum is not suitable for launching and operating a full-size social networking service. This is because the service will be restricted due to the nature of the existing public blockchains with limited throughput, costly transaction fees and desperately low data storage capability. 
+
+    Therefore, to provide existing web service level application onto the blockchain,  we build our own blockchain called LeisureMetaverse Blockchain (Hereafter, LMC). 
+
+    However, LMC is a unique stand-alone blockchain, but it doesn't works as layer-1 blockchain, rather it works as a layer-2 of Ethereum. Using LMC-Ethreum gateway, LMC can send and receive its own data to Ethereum. 
+
+- What is LM token?
+
+  - LeisureMetaverse issued its own utility token, ‘LM’ to motivate trade and increase usability. LeisureMetaverse operates its own blockchain, but the LM token on LeisureMetaverse and the LM ERC20 token on Ethereum are interchangeable through LMC-ETH gateway. 
+
+- What is LMC-ETH gateway? 
+
+  - Basically, it is a two-way pegged gateway between LMC and Ethereum using a simple single hosting mode. 
+    - Single hosting mode: the easiest way to implement two-way peg, the basic principle is the same as the single signature notary mechanism. The transaction participants send the digital assets on the mainchain to a single escrow EOA address, that is, the address of a fully trusted personal account or exchange. When the custodian receives and confirms the digital assets on the mainchain, the custodian sends the corresponding assets on the sidechain to the sidechain account of the transaction party.
+    - This mode is easiest way to develop two-way pegged gateway, but its single escrow EOA address is point of exploit. 
+  - To ensure a higher level of safty on gateway operation, it is inevitable to change the single escrow EOA address to CA using smart contract on Ethereum. 
 
 
 
-#### 개발 목표 
+### Objectives of LMC-ETH Gateway CA Development
 
 - **Upgradable Contract**
-  - 컨트랙트는 필요시 업그레이드가 가능해야 할 것 
-  - pointer / logic / data >> 3중 분할 구조를 이용할 것 
+  - The whole contract, including core logic and parameters, must be upgradable
+    - To build an upgradable contract, we will use a structure of tertiary layers of pointer / logic / data contracts.  
 - **Multisig Confirmation**
-  - 출금 요청이 승인되기 위해서는 2단계의 서명이 필요하도록 할 것 
-    - gateway 서버의 서명 
-      - transfer request를 data contract에 저장하기 위해서 필요  
-    - approver 서명 
-      - transfer request를 최종 승인하기 위해서 필요
-      - View 페이지에서 요청 확인 후 메타마스크를 이용해서 서명 
-      - 다수의 approver 등록 가능
-        - <u>출금 요청 수량에 따라서 필요 서명 갯수를 0/1/2개로 분할</u> 
+  - To confirm the withdrawl request, it is necessary to be signed by multiple entity 
+    - Gateway Server's  Signature
+      - Need to save a transfer request on the storage of data contract
+    - Approver's Signature
+      - Need to confirm transfer request finally
+      - Verified outside approver will check the transfer request on view page, will sign on the confirm transaction using their metamask wallet
+      - Can register multiple approvers 
+        - Based on the number of token that withdrawal requested, quorum of approver's signature will be varied (0/1/2) 
 
 
 
-### Eth-Gateway Contract 전환 기술 구성 요소 
+## Flow of Deposit / Withdrawal
 
-###### 게이트웨이 컨트랙트 계층
+###### Required Condition
+
+- Every user's address pairs must be stored in the system 
+  - for the every user of LMC, LMC block stores their address as a state
+  - To deposit / withdrawl LM token using gateway, user's Ethereum address shall be stored in the LMC user account state in the LMC block data 
+- Deposit / withdrawal request of unregistered user will be pended unti they register their LMC-ETH address pair data in LMC 
+
+###### Flow of Deposit  
+
+- For the flow of deposit, it is quite simple 
+  1. A user sends LM ERC20 token to ETH wallet address of two-way pegged gateway  in the Ethereum side
+  2. If transaction success, the updated balance data will be recorded on the internal storage of LM ERC20 token contract
+  3. Gateway client will listen the transaction using infura API 
+  4. Detect the LMC address of the user who send the LM token from Ethereum mainnet side
+  5. Mint exactly same ammount of LM token to the user's LMC address 
+
+###### Flow of Withdrawal 
+
+- For the flow of withdrawal, it is a bit complex 
+
+  1. User send LM token in LMC to LMC wallet address of two-way pegged gateway in the LMC side 
+
+  2. Gateway client listens the transaction, then provoke transfer request transaction to the proxy contract of LMC-ETH gateway contract on the Ethereum side
+  3. Gateway client send the transfer request information to withdrawal request view page 
+  4. Approvers tracks new transfer request on the view page, then sign and send confirmation transaction
+  5. (If number of confirmations form a quorum) LMC-ETH gateway contract execute the LM ERC20 token transfer to the user's Ethereum address 
+  6. After the finalization of LM token transfer, burn the transfer requested LM token inside the LMC to match the LM token balance between both side of gateway wallet 
+
+
+
+### Source Codes for the LMC-ETH Gateway CA 
+
+- LM ERC20 Token Contract  
+  - Contract Deploy Address
+    - ETH Mainnet: 0xc064F4F215B6A1E4e7F39bD8530C4dE0fC43ee9D
+    - Sepolia Testnet: 0x7d94A1754b25B93ab2Ce5BbfFfE5232966a69a4b
+  - Source Code
+    - https://github.com/leisuremeta/leisuremeta-token
+
+
+
+### Technical Structure of LMC-ETH Gateway CA 
+
+###### Layer of Smart Contract on Ethereum
 
 - **Pointer contract** 
-  - 모든 외부 TX가 수신되는 컨트랙트 주소 / TX의 내용에 따라서 logic contract로 릴레이 / LM 밸런스를 소유
+  - The contract address where all the deposit/withdrawal request TXs will be  received.
+  - Will relay the requested TXs to the logic contact based on the its content
+  - Possesses Token Balance 
+    - LM for Escrow 
+    - ETH for gasfee 
 - **Logic Contract** 
-  - 기능 설명 
-    - pointer에서 relay되는 요청을 미리 저장된 로직에 따라 처리 
-
-  - 필요 기능 
-    - transfer request 관련 기능 
+  - The contract that execute relayed from the pointer contract based on pre-defined logics
+    
+  - List of functions 
+    - Function for transfer request 
       - store transfer request
       - update confirmation status
-      - call transfer function (완료 후 clear data)
-      - <u>remove transfer request</u> 
-        - <u>승인이 영원히 보류된 gabage data를 삭제하는 기능</u>
-        - <u>owner에 의해서만 작동</u> 
+      - call transfer function (if transfer calling finished, then clear data)
+      - remove transfer request 
+        - remove gabbage transfer request data which will never be confirmed 
+        - only accessible by contract owner
       
-    - 권한 관련 기능 
+    - Function for owner 
       - change owner address 
       - change gateway address
       - add approver / remove approver 
         - change parameter 		
 - **Data contract**
-  - 저장 정보 
-    - 컨트랙트의 권한 정보 
-      - **gateway address**: transfer request를 보낼 수 있는 주소 정보(게이트웨이) 저장 
-      - **approver address**: 저장된 transfer request를 승인할 수 있는 사용자 주소 목록 
-      - **owner address**: approver address를 추가 삭제, gateway address를 변경할 수 있는 사용자 주소 
+  - The List of Stored Data 
+    - Ownership of the Contract  
+      - **gateway address**: the gateway address that can send transfer request to the pointer contract 
+      - **approver address**: list of approver's address who can confirm the transfer request
+      - **owner address**: the contract owner's address who can add / remove approver's address or changes gateway address
 
-    - **서명 관련 parameter** 값
-      - transfer request의 LM amount에 따라 변동되는 **필요 서명 수**
-        - <u>amount에 따른 서명 갯수 요구량은 0/1/2 로 확정</u> 
-          - <u>data contract 내 parameter로 저장</u> 
-            - <u>승인이 불필요한 최대 amount</u>
-            - <u>승인 서명 1개가 필요한 최대 amount</u>
-            - <u>그 이상은 승인 서명 2개 필요</u> 
+    - Parameter for Transfer Request Confirmation
+      - Quorum of signatures to confirm the transfer request
+        - The quorum varies from 0 to 2, based on the amount to be sent  
+          - Parameters will be stored in the data contract 
+            - The maximum of mount without approver's confirmation (quorum = 0) 
+            - The maximum of mount with only a single approver's confirmation (quorum = 1)
+            - Above that, two approver's confirmation is needed (quorum=2)
       
-    - 출금요청 정보
-      - **transfer request storage** : 출금요청 ID, address, amount 정보 저장
-      - **confirmation state storage** : 출금요청 ID, sequence[approver] 정보 저장  
+    - Transfer Request Data
+      - **Transfer request storage** : transfer request ID, destination address, amount 
+      - **Confirmation state storage** : transfer request ID, sequence[approver's address] 
 
-###### 게이트웨이 서버 계층 
+###### Gateway Server Client Layer 
 
-- LMC wallet, ETH wallet, 게이트웨이 클라이언트로 구성 
-- 입금시 - 기존과 동일
-  - proxy contract로 사용자의 입금
-  - gateway node가 infura를 통해서 listen
-  - LMC 내부 해당 사용자 주소로 토큰 발행 및 전송 
-- 출금시 
-  - infura API를 통해서 transfer request를 proxy로 전달 
-    - 전달된 tx 요청에 대한 결과값을 listen
-    - 해당 결과를 출금요청 View 페이지로 전달 
-- <u>추가 기능 - Cold Wallet 기반 자산 리밸런싱</u> 
-  - <u>gateway proxy contract가 보유한 LM 토큰을 회사가 관리하는 콜드월렛으로 분산시키는 기능</u> 
-  - <u>게이트웨이 클라이언트에 의해 동작</u> 
-    - <u>정해진 일정에 따라 배치 작동</u> 
-    - <u>proxy contract와 cold wallet의 잔고 비교</u> 
-      - <u>정해진 비율에 따라 잔고 리밸런싱</u> 
-        - <u>proxy contract >> cold wallet 전송의 경우</u>
-          - <u>일반 transfer request와 동일하게 동작</u> 
-        - <u>cold wallet >> proxy contract의 경우</u> 
-          - <u>user에 의한 내부 송금이 아니므로 입금 예외처리 할 것</u>
-          - <u>게이트웨이 내 cold wallet 주소 정보 입력 / 입금자 주소 확인 후 예외 처리</u> 
+- Consist of LMC wallet, ETH wallet and gateway client  
+- Flow of Deposite (from ETH to LMC)
+  - User transfer LM to proxy contract's address 
+  - Gateway node will listen the event by infura service 
+  - Gateway client will check the ETH address, will find paired LMC address of the user 
+  - Gateway client will mint the same amount of LM token to the user's address inside the LMC
+- Flow of Withdrawal (from LMC to ETH) 
+  - User will transfer their LM token to gateway's LMC wallet 
+  - Gateway client will send transfer request TX with user's transfer request data using gateway's ETH wallet 
+    - Gateway client will listen the result of transfer request using Infura service
+    - If transfer request tx is confirmed, the transfer request will be listed on the withdrawal request view webpage  
 
-###### 출금 요청 View 페이지 
+###### Withdrawal Request View Webpage  
 
-- 출금요청 목록, 승인 상태 조회 가능한 페이지
-- 해당 페이지에서 입금 관련 상태도 확인할 수 있도록 만드는 것도 고려중 
+- The webpage can see the list of requested transfers and its confirmation state 
 
-###### approver 메타마스크
+###### Approver's Wallet
 
-- 해당 interface에서 출금요청을 tx로 approve
-
-###### LM Wallet 송금 페이지 (플랫폼개발실 수정사항)
-
-- <u>인출 요청에 대해서 해당 TX를 추적 / 정보 표출</u>
-  - <u>전송중 / 전송 완료</u> 
-  - <u>ERC20 Token Contract의 송금 기록 추적(infura)</u>
-    - <u>전송 완료시 gateway proxy contract로부터 user address로의 tx 관측 가능</u> 
+- The interface which approver can send confirmation tx for transfer requests
 
 
 
-# Flow Diagram
+### Flow Diagram for Withdrawal 
 
 ```mermaid
 sequenceDiagram
@@ -150,49 +196,49 @@ sequenceDiagram
 ```
 
 1. Submit transfer request 
-   - 게이트웨이 서버(User Requester)의 address로 부터 TX 수신 (출금요청 ID, address, amount 정보 포함)
-   - logic contract의 transfer function을 호출 
+   - receive transfer request form gateway(User Requester)'s ETH wallet address including transfer request ID, destination address, amount informations
+   - calling transfer function in the logic contract
 2. Invoke transfer fuction 
-   - proxy가 전달받은 출금 요청을 logic contract로 전달 
+   - relaying transfer request that proxy contract received to logic contract 
 3. Store transaction request 
-   - 최초 proxy contract로 전달된 출금요청 tx 내에 담겨있는 정보를 data contract에 저장 
-     - transaction request storage - 출금요청 ID, address, amount 정보 저장 
+   - store the informations from the relayed transfer request to the storage in the data contract
+     - stored items: transfer request  ID, address, amount 
 4. Confirm storage of request 
-   - data contract 내에 출금요청 정보가 저장됨을 logic contract로 응답 
+   - response to the logic contract for storing transfer request data in the data contract
 5. Confirm transfer request stored 
-   - proxy contract가 수신한 transfer request가 성공적으로 data contract로 전달되어 저장되었음을 응답으로 수신 
+   - response to the proxy contract for the storing data on data contract by logic contract
 6. Notification: confirmation needed 
-   - 게이트웨이 서버가 Infura API를 통해서 이벤트 결과 추적 
-     - 전달한 출금요청이 승인 대기중임을 확인 
-     - 해당 출금 요청 정보를 View 페이지로 전달 및 등록 
+   - gateway server listen the result of transfer request event using Infura API 
+     - check the confirmation state of delivered transfer request  
+     - Send the checked transfer request information to withdrawal request view page 
 7. Submit transfer confirmation 
-   - View 페이지를 통해서 보고 있던 approver
-     -  metamask를 이용해서 해당 출금요청을 승인하는 tx를 proxy contract로 전송 
+   - approver tracks new transfer request on the view page
+     -  sign and send confirmation transaction for the transfer request on the view page using metamask wallet
 8. invoke confirmation function
-   - Proxy Contract의 TX로 수신된 confirmation을 Logic Contract로 전달 
+   - relay the confirmation transaction from proxy contract to logic contract 
 9. Request confirmation state
-   - Proxy로부터 전달된 승인 정보 (승인된 출금요청 ID, approver의 address)를 수신 
-10. Provice confirmations status 
-    - Proxy로부터 전달된 승인 요청에 대해서 해당 transfer request의 승인 상태를 logic contract로 전달 
-11. (confirmation이 충분하지 않은 경우) Update confirmation state
-    - data contract 내에 저장되어 있는 confirmations state를 갱신 
+   - request the confirmation state of transfer request (transfer request ID, approver's address) that already stored in data contract 
+10. Provide confirmations status 
+    - send the confirmation state of transfer request to logic contract 
+11. (If number of confirmations lack the quorum) Update confirmation state
+    - update confirmations state data in the data contract
 12. Confirm state update
-    - confirmation state가 업데이트 됨을 logic contract로 응답 
-13. (충분한 confirmation이 모인 경우) Request transfer execution 
-    - 10에서 전달된 정보를 통해서 logic contract는 confirm이 완료 확인 
-    - transfer를 execute 하기 위해서 proxy contract에 요청(잔고 보유자가 proxy이기 때문)
-    - Approver의 승인이 성공적으로 업데이트 되었음을 응답으로 수신 
-    - <게이트웨이 서버> 해당 상태 변화에 대해서 infura를 통해서 확인 후 View 페이지에 반영할 것 
+    - response to the logic contract of updating confirmation state in the data contract
+13. (If number of confirmations form a quorum) Request transfer execution 
+    - logic contract check the confirmation state(form a quorum)
+    - request transfer LM ERC20 token to proxy contract (ERC20 balance belongs to proxy contract) 
+    - receives responce that the changes in the confirmation state successfully updated by approver's confirmation 
+    - (gateway server) listens the state change by infura API, then apply the change on the view page
 14. Invoke ERC20 transfer fuction 
-    - proxy contract는 ERC20 token contract의 transfer function 동작을 요청 
+    - request to call the transfer method in the LM ERC20 token contract by proxy contract
 15. Respond to transfer execution 
-    - transfer function 동작 (사용자에게 토큰 이체)
+    - succesfuly send transaction using transfer method (send LM token to destination address)
 16. Acknowledge transfer execution 
-    - transfer가 성공적으로 완료되었음을 응답으로 수신 
+    - response to logic contract that the ERC20 transfer was successfully finished 
 17. Remove completed transfer request 
-    - 완료된 출금요청에 대해서 data contract 내의 해당 데이터 삭제 요청
+    - request to delete the transfer request data for successfully finished request 
 18. Confirm removal of request 
-    - 삭제 완료 후 logic contract로 응답 전달
+    - response to logic contrat for deleting transfer request data of successfully finished request 
 19. Respond with confirmation state 
-    - 승인요청에 따라서 출금 요청 처리가 성공적으로 완료되었음을 응답
+    - response to the proxy contract for the successfuly finished transfer request 
 20. Provide confirmation status 
