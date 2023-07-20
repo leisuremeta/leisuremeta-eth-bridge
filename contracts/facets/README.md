@@ -1,25 +1,25 @@
 # facet
-- 실행되는 contract 함수가 구현된 부분
+- config and logic for contract
 
 ## control-facet
-- 컨트랙트 owner가 설정을 제어하는 facet
+- Setup config by owner
 - function
-  - setGateway: 게이트웨이 설정
-  - addApprovers: 승인자 추가
-  - removeApprovers: 승인자 해제
-  - setBoundary: 인증 조건 설정
-  - setDeployedContract: ERC-20 설정
+  - setGateway: Setup gateway
+  - addApprovers: Adds approvers
+  - removeApprovers: Remove approver's permission
+  - setBoundary: Setup boundary condition
+  - setDeployedContract: Setup ERC-20 contract
 
 ## trasfer-facet
-- gateway, approver가 transaction을 저장 및 승인하는 facet
+- Facet for transaction management
 - modifier
-  - onlyGateway: 유효한 게이트웨이 확인
-  - onlySigner: 유효한 승인자 확인
-  - txExists: 트랜잭션 존재 확인
+  - onlyGateway: Check valid gateway
+  - onlySigner: Check valid approver
+  - txExists: Check transaction exist
 - function
-  - addTransaction: 트랜잭션 저장
-  - confirmTransaction: 트랜잭션 승인
-  - (internal)executeTransaction: 트랜잭션 실행 및 삭제
+  - addTransaction: Add transaction
+  - confirmTransaction: Confirm transaction
+  - (internal)executeTransaction: Execute and remove transaction
 
 ## cut, loupe, ownership facet
-- diamond proxy를 위한 facet
+- Facet for diamond proxy
