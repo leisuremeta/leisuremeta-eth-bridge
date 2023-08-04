@@ -5,9 +5,9 @@ import "../libraries/LibDiamond.sol";
 import "../libraries/LibAppStore.sol";
 
 contract TransferFacet {
-    event SaveTransferRequest(address requester, uint amount, uint tidx);
+    event SaveTransferRequest(address requester, uint amount, uint txid);
     event ConfirmTransaction(address signer, uint txid);
-    event ExecuteTransaction(uint txid, string result);
+    event ExecuteTransaction(address requester, uint amount, uint txid, string result);
     event RevokeTransaction(address signer, uint txId);
 
     /** @dev 유효한 gateway address인지 확인 */
@@ -43,10 +43,17 @@ contract TransferFacet {
         address _to,
         uint _amount
     ) external onlyGateway {
-        uint cnt = LibAppStore.addTransaction(_txId, _to, _amount);
-        emit SaveTransferRequest(_to, _amount, _txId);
-        if(cnt == 0) {
-            executeTransaction(_txId);
+        LibAppStore.AppStorage storage ls = LibAppStore.appStorage();
+        if(_amount > ls.boundaryTwo) {
+            LibAppStore.addTransaction(_txId, _to, _amount, 2);
+            emit SaveTransferRequest(_to, _amount, _txId);
+        } else if(_amount > ls.boundaryOne) {
+            LibAppStore.addTransaction(_txId, _to, _amount, 1);
+            emit SaveTransferRequest(_to, _amount, _txId);
+        } else {
+            (bool success, bytes memory returnData) = ls.deployed.call(abi.encodeWithSignature("transfer(address,uint256)", _to, _amount));
+            require(success, string(returnData));
+            emit ExecuteTransaction(_to, _amount, _txId, string(returnData));
         }
     }
 
@@ -79,9 +86,9 @@ contract TransferFacet {
         (bool success, bytes memory returnData) = ls.deployed.call(abi.encodeWithSignature("transfer(address,uint256)", t.requester, t.amount));
         require(success, string(returnData));
 
-        LibAppStore.removeTransaction(_txId);
+        emit ExecuteTransaction(t.requester, t.amount, _txId, string(returnData));
 
-        emit ExecuteTransaction(_txId, string(returnData));
+        LibAppStore.removeTransaction(_txId);
     }
 
     /** @dev 트랜잭션 반려하고 트랜잭션을 제거

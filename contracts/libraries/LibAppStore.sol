@@ -104,16 +104,10 @@ library LibAppStore {
       * @param _txId 트랜잭션 키 
       * @param _to  trnasfer 트랜잭션을 보낼 address
       * @param _amount trnasfer 트랜잭션 보낼 값 
+      * @param cnt approver count
       */
-    function addTransaction(uint _txId, address _to, uint _amount) internal returns(uint cnt) {
+    function addTransaction(uint _txId, address _to, uint _amount, uint cnt) internal {
         AppStorage storage ls = appStorage();
-        if(_amount > ls.boundaryTwo) {
-            cnt = 2;
-        } else if(_amount > ls.boundaryOne) {
-            cnt = 1;
-        } else {
-            cnt = 0;
-        }
         ls.transactions[_txId] = Transaction({
             requester: _to,
             amount: _amount,
