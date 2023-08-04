@@ -5,8 +5,6 @@ pragma solidity ^0.8.19;
 library LibAppStore {
     bytes32 constant STORAGE_POSITION = keccak256("diamond.AppStorage");
 
-    event GatewayTransferred(address indexed previousGateway, address indexed newGateway);
-
     /** 
       * @param requester trnasfer 트랜잭션을 보낼 address
       * @param amount  trnasfer 트랜잭션 보낼 값
@@ -30,6 +28,7 @@ library LibAppStore {
       * @param isConfirmed 해당 트랜잭션 인증 여부
       */
     struct AppStorage {
+        address tokenStorage;
         address gateway;
         address deployed;
         mapping(address => bool) approver;
@@ -47,14 +46,20 @@ library LibAppStore {
         assembly { ls.slot := position }
     }
 
+    /** @dev token storage를 설정한다
+      * @param _newTokenStorage 설정할 token storage address
+      */
+    function setTokenStorage(address _newTokenStorage) internal {
+        AppStorage storage ls = appStorage();
+        ls.tokenStorage = _newTokenStorage;
+    }
+
     /** @dev gateway를 설정한다
       * @param _newGateway 설정할 gateway address
       */
     function setGateway(address _newGateway) internal {
         AppStorage storage ls = appStorage();
-        address previousGateway = ls.gateway;
         ls.gateway = _newGateway;
-        emit GatewayTransferred(previousGateway, _newGateway);
     }
 
     /** @dev 인증 조건을 설정한다

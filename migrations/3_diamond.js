@@ -36,7 +36,10 @@ module.exports = function (deployer, network, accounts) {
     const diamondCut = [
       [DiamondCutFacet.address, FacetCutAction.Add, getSelectors(DiamondCutFacet)],
       [DiamondLoupeFacet.address, FacetCutAction.Add, getSelectors(DiamondLoupeFacet)],
-      [OwnershipFacet.address, FacetCutAction.Add, getSelectors(OwnershipFacet)]
+      [OwnershipFacet.address, FacetCutAction.Add, getSelectors(OwnershipFacet)],
+      [ControlFacet.address, FacetCutAction.Add, getSelectors(ControlFacet)],
+      [TransferFacet.address, FacetCutAction.Add, getSelectors(TransferFacet)],
+
     ]
     return deployer.deploy(Diamond, diamondCut, [accounts[0]])
   })

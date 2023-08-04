@@ -46,8 +46,6 @@ contract('FacetTest', async (accounts) => {
   let ownershipFacet
   let diamond
   let lm
-  let tf
-  let cf
   let controlFacet
   let transferFacet
   let result
@@ -56,14 +54,12 @@ contract('FacetTest', async (accounts) => {
   const zeroAddress = '0x0000000000000000000000000000000000000000'
 
   before(async () => {
-    tf = await TF.deployed()
-    cf = await CF.deployed()
     lm = await LM.deployed()
     diamond = await Diamond.deployed()
     diamondCutFacet = new web3.eth.Contract(DiamondCutFacet.abi, diamond.address)
     diamondLoupeFacet = new web3.eth.Contract(DiamondLoupeFacet.abi, diamond.address)
-    controlFacet = new web3.eth.Contract(cf.abi, diamond.address)
-    transferFacet= new web3.eth.Contract(tf.abi, diamond.address)
+    controlFacet = new web3.eth.Contract(CF.abi, diamond.address)
+    transferFacet= new web3.eth.Contract(TF.abi, diamond.address)
     // unfortunately this is done for the side affect of making selectors available in the ABI of
     // OwnershipFacet
     // eslint-disable-next-line no-unused-vars
@@ -75,18 +71,12 @@ contract('FacetTest', async (accounts) => {
     for (const address of await diamondLoupeFacet.methods.facetAddresses().call()) {
       addresses.push(address)
     }
-    const cfs = getSelectors(cf)
-    const tfs = getSelectors(tf)
-    addresses.push(cf.address)
-    addresses.push(tf.address)
-    await diamondCutFacet.methods
-      .diamondCut([
-        [cf.address, FacetCutAction.Add, cfs],
-        [tf.address, FacetCutAction.Add, tfs],
-      ], zeroAddress, '0x')
-      .send({ from: web3.eth.defaultAccount, gas: 1000000 })
+    const cfs = getSelectors(CF)
+    const tfs = getSelectors(TF)
     result = await diamondLoupeFacet.methods.facetFunctionSelectors(addresses[3]).call()
     assert.sameMembers(result, cfs)
+    result = await diamondLoupeFacet.methods.facetFunctionSelectors(addresses[4]).call()
+    assert.sameMembers(result, tfs)
   })
 
   it('should set deploy contract functions', async () => {
@@ -125,7 +115,7 @@ contract('FacetTest', async (accounts) => {
     })
   })
   it('before', async () => {
-    await lm.transfer(diamond.address, 10000)
+    await lm.transfer(diamond.address, 1_000_000_000)
   })
 
   it('should submit and execute', async () => {
@@ -147,7 +137,7 @@ contract('FacetTest', async (accounts) => {
     try {
       await tx;
     } catch (error) {
-        assert(error.message);
+      assert(error.message);
     }
   })
   it('should revert already executed transaction', async () => {
@@ -157,7 +147,7 @@ contract('FacetTest', async (accounts) => {
     try {
       await tx;
     } catch (error) {
-        assert(error.message);
+      assert(error.message);
     }
   })
 
@@ -165,4 +155,56 @@ contract('FacetTest', async (accounts) => {
     const a = await lm.balanceOf(accounts[2])
     assert.equal(a, BigInt(3000))
   })
+ 
+  // revoke test start
+  it('should test function call transfer', async () => {
+    await transferFacet.methods.addTransaction(900, accounts[2], 100_000).send({
+      from: accounts[1], gas: 1000000
+    })
+  })
+  it('should test fail function call revoke', async () => {
+    const tx = transferFacet.methods.revokeTransaction(900).send({
+      from: accounts[4], gas: 1000000
+    })
+    try {
+      await tx;
+    } catch (error) {
+      assert(error.message);
+    }
+  })
+  it('should test success function call revoke', async () => {
+    await transferFacet.methods.revokeTransaction(900).send({
+      from: accounts[7], gas: 1000000
+    })
+  })
+  it('should test fail function call revoke', async () => {
+    const tx = transferFacet.methods.revokeTransaction(900).send({
+      from: accounts[7], gas: 1000000
+    })
+    try {
+      await tx;
+    } catch (error) {
+      assert(error.message);
+    }
+  })
+  // revoke test end
+  
+  // token store test start
+  it('should set token storage functions', async () => {
+    await controlFacet.methods.setTokenStorage(accounts[9]).send({
+      from: accounts[0], gas: 1000000
+    })
+  })
+  it('should store token functions', async () => {
+    await controlFacet.methods.storeToken(1_000_000).send({
+      from: accounts[0], gas: 1000000
+    })
+  })
+  it('after store', async () => {
+    const a = await lm.balanceOf(accounts[9])
+    assert.equal(a, BigInt(1000000))
+    const b = await lm.balanceOf(diamond.address)
+    assert.equal(b, BigInt(1000000000 - 1000000 - 3000))
+  })
+  // token store test end
 })

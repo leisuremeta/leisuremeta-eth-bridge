@@ -8,7 +8,7 @@ contract TransferFacet {
     event SaveTransferRequest(address requester, uint amount, uint tidx);
     event ConfirmTransaction(address signer, uint txid);
     event ExecuteTransaction(uint txid, string result);
-    event RevokeConfirmation(address signer, uint txId);
+    event RevokeTransaction(address signer, uint txId);
 
     /** @dev 유효한 gateway address인지 확인 */
     modifier onlyGateway() {
@@ -82,5 +82,16 @@ contract TransferFacet {
         LibAppStore.removeTransaction(_txId);
 
         emit ExecuteTransaction(_txId, string(returnData));
+    }
+
+    /** @dev 트랜잭션 반려하고 트랜잭션을 제거
+      * @param _txId 트랜잭션 키 
+      */
+    function revokeTransaction(
+        uint _txId
+    ) external onlySigner txExists(_txId) {
+        LibAppStore.removeTransaction(_txId);
+
+        emit RevokeTransaction(msg.sender, _txId);
     }
 }
