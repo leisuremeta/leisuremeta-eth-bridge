@@ -48,7 +48,7 @@ contract ControlFacet {
     function addApprovers(address[] calldata _newApprovers) external {
         LibDiamond.enforceIsContractOwner();
         LibAppStore.addApprovers(_newApprovers);
-        // emit AddApprovers(_newApprovers);
+        emit AddApprovers(_newApprovers);
     }
 
     /** @dev approver 비활성화
